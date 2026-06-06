@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plateau Breaker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0d0d0d; --surface: #161616; --border: #2a2a2a;
+    --accent: #c8f135; --accent-dim: rgba(200,241,53,0.12);
+    --text: #f0ede6; --muted: #6b6b6b;
+  }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem 1rem; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E"); pointer-events: none; z-index: 0; }
+  .container { width: 100%; max-width: 580px; position: relative; z-index: 1; }
+  .header { margin-bottom: 3rem; animation: fadeUp 0.6s ease both; }
+  .wordmark { font-family: 'Bebas Neue', sans-serif; font-size: 52px; letter-spacing: 0.02em; color: var(--text); line-height: 1; }
+  .wordmark span { color: var(--accent); }
+  .tagline { font-size: 13px; color: var(--muted); margin-top: 6px; font-weight: 300; letter-spacing: 0.04em; }
+  .progress-wrap { margin-bottom: 2.5rem; animation: fadeUp 0.6s 0.05s ease both; }
+  .progress-meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; margin-bottom: 8px; letter-spacing: 0.06em; }
+  .progress-track { height: 2px; background: var(--border); border-radius: 99px; }
+  .progress-fill { height: 2px; background: var(--accent); border-radius: 99px; transition: width 0.5s cubic-bezier(0.4,0,0.2,1); box-shadow: 0 0 8px rgba(200,241,53,0.4); }
+  .step { display: none; animation: fadeUp 0.4s ease both; }
+  .step.active { display: block; }
+  .q-label { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 1rem; }
+  .question { font-size: 26px; font-weight: 500; line-height: 1.3; color: var(--text); margin-bottom: 0.5rem; }
+  .hint { font-size: 13px; color: var(--muted); margin-bottom: 1.5rem; font-weight: 300; }
+  textarea { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 300; padding: 14px 16px; resize: none; transition: border-color 0.2s, box-shadow 0.2s; line-height: 1.6; }
+  textarea::placeholder { color: var(--muted); }
+  textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(200,241,53,0.08); }
+  .btn-next { margin-top: 1rem; display: inline-flex; align-items: center; gap: 8px; background: var(--accent); color: #0d0d0d; border: none; border-radius: 6px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; padding: 11px 22px; cursor: pointer; transition: transform 0.15s, opacity 0.15s; letter-spacing: 0.02em; }
+  .btn-next:hover { opacity: 0.88; transform: translateY(-1px); }
+  .btn-next:active { transform: scale(0.97); }
+  .btn-next svg { width: 14px; height: 14px; }
+  .loading { display: none; text-align: center; padding: 3rem 0; animation: fadeUp 0.4s ease both; }
+  .loading.active { display: block; }
+  .spinner { width: 36px; height: 36px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1.5rem; }
+  .loading-text { font-size: 13px; color: var(--muted); font-family: 'DM Mono', monospace; letter-spacing: 0.06em; }
+  .result { display: none; animation: fadeUp 0.5s ease both; }
+  .result.active { display: block; }
+  .result-header { margin-bottom: 1.75rem; }
+  .result-badge { display: inline-flex; align-items: center; gap: 6px; background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(200,241,53,0.2); font-size: 11px; font-family: 'DM Mono', monospace; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 12px; border-radius: 99px; margin-bottom: 1rem; }
+  .result-title { font-family: 'Bebas Neue', sans-serif; font-size: 38px; letter-spacing: 0.02em; line-height: 1.1; color: var(--text); }
+  .result-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; margin-bottom: 1rem; }
+  .card-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 8px; }
+  .card-label::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+  .card-body { font-size: 15px; font-weight: 300; line-height: 1.75; color: var(--text); white-space: pre-wrap; }
+  .btn-restart { margin-top: 2rem; background: none; border: 1px solid var(--border); color: var(--muted); font-family: 'DM Sans', sans-serif; font-size: 13px; padding: 9px 18px; border-radius: 6px; cursor: pointer; transition: border-color 0.2s, color 0.2s; }
+  .btn-restart:hover { border-color: var(--muted); color: var(--text); }
+  .error-msg { background: rgba(255,77,77,0.08); border: 1px solid rgba(255,77,77,0.25); color: #ff8080; border-radius: 8px; padding: 1rem 1.25rem; font-size: 14px; margin-top: 1rem; display: none; }
+  .api-notice { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 2rem; font-size: 13px; color: var(--muted); font-weight: 300; animation: fadeUp 0.6s 0.1s ease both; }
+  .api-notice strong { color: var(--text); font-weight: 500; }
+  .api-key-row { display: flex; gap: 8px; margin-top: 10px; }
+  .api-key-row input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px; padding: 8px 12px; }
+  .api-key-row input:focus { outline: none; border-color: var(--accent); }
+  .api-key-row button { background: var(--border); border: none; border-radius: 6px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 12px; padding: 8px 14px; cursor: pointer; }
+  .api-key-row button:hover { background: #3a3a3a; }
+  .chat-wrap { margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1.5rem; }
+  .chat-header { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 1rem; }
+  .chat-messages { display: flex; flex-direction: column; gap: 12px; margin-bottom: 1rem; max-height: 400px; overflow-y: auto; }
+  .chat-bubble { max-width: 88%; padding: 10px 14px; border-radius: 10px; font-size: 14px; font-weight: 300; line-height: 1.6; }
+  .chat-bubble.user { background: var(--accent); color: #0d0d0d; align-self: flex-end; border-bottom-right-radius: 3px; }
+  .chat-bubble.coach { background: var(--surface); border: 1px solid var(--border); color: var(--text); align-self: flex-start; border-bottom-left-radius: 3px; }
+  .chat-bubble.typing { color: var(--muted); font-style: italic; }
+  .chat-input-row { display: flex; gap: 8px; align-items: flex-end; }
+  .chat-input-row textarea { flex: 1; border-radius: 8px; font-size: 14px; padding: 10px 14px; }
+  .chat-send { background: var(--accent); border: none; border-radius: 8px; color: #0d0d0d; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: opacity 0.15s; }
+  .chat-send:hover { opacity: 0.85; }
+  .chat-send:disabled { opacity: 0.4; cursor: not-allowed; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="wordmark">Plateau<span>.</span>Breaker</div>
+    <div class="tagline">Diagnose your stuck lift — no login, no fluff, just answers.</div>
+  </div>
+
+  <div class="api-notice" id="apiNotice">
+    <strong>Your Anthropic API key</strong> — saved in your browser only, never sent anywhere else.
+    <div class="api-key-row">
+      <input type="password" id="apiKeyInput" placeholder="sk-ant-..." />
+      <button onclick="saveKey()">Save</button>
+    </div>
+  </div>
+
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-meta">
+      <span id="stepLabel">Step 1 of 8</span>
+      <span id="stepPct">12%</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill" style="width:12%"></div>
+    </div>
+  </div>
+
+  <div id="stepsWrap">
+    <div class="step active" id="step-0">
+      <div class="q-label">Exercise</div>
+      <div class="question">Which exercise are you stuck on?</div>
+      <div class="hint">Name the lift — be specific if you can.</div>
+      <textarea id="ans-0" rows="2" placeholder='e.g. "Bench press" or "Romanian deadlift"'></textarea>
+      <button class="btn-next" onclick="next(0)">Next <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+      <div class="error-msg" id="err-0">Please write something before continuing.</div>
+    </div>
+    <div class="step" id="step-1">
+      <div class="q-label">Experience</div>
+      <div class="question">How long have you been lifting in general?</div>
+      <div class="hint">Total time training with weights — not just this exercise.</div>
+      <textarea id="ans-1" rows="2" placeholder='e.g. "About 2 years" or "6 months, fairly new to it"'></textarea>
+      <button class="btn-next" onclick="next(1)">Next <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+      <div class="error-msg" id="err-1">Please write something before continuing.</div>
+    </div>
+    <div class="step" id="step-2">
+      <div class="q-label">Current weight &amp; reps</div>
+      <div class="question">What weight and reps are you stuck at?</div>
+      <div class="hint">Your working weight and how many reps you're hitting.</div>
+      <textarea id="ans-2" rows="2" placeholder='e.g. "100kg for 5 reps"'></textarea>
+      <button class="btn-next" onclick="next(2)">Next <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+      <div class="error-msg" id="err-2">Please write something before continuing.</div>
+    </div>
+    <div class="step" id="step-3">
+      <div class="q-label">Duration</div>
+      <div class="question">How long have you been stuck at this weight?</div>
+      <div class="hint">Roughly — weeks or months is fine.</div>
+      <textarea id="ans-3" rows="2" placeholder='e.g. "About 6 weeks"'></textarea>
+      <button class="btn-next" onclick="next(3)">Next <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+      <div class="error-msg" id="err-3">Please write something before continuing.</div>
+    </div>
+    <div class="step" id="step-4">
+      <div class="q-label">Failure point</div>
+      <div class="question">Where does the lift break down?</div>
+      <div class="hint">At what point do you fail or feel weakest?</div>
+      <textarea id="ans-4" rows="2" placeholder='e.g. "Off my chest on bench" or "Halfway up the squat"'></textarea>
+      <button class="btn-next" onclick="next(4)">Next <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+      <div class="error-msg" id="err-4">Please write something before continuing.</div>
+    </div>
+    <div class="step" id="step-5">
+      <div class="q-label">Training frequency</div>
+      <div class="question">How often do you train this lift?</div>
+      <div class="hint">Days per week and roughly how many sets per session.</div>
+      <textarea id="ans-5" rows="2" placeholder='e.g. "2x per week, 4 sets each time"'></textarea>
+      <button class="btn-next" onclick="next(5)">Next <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+      <div class="error-msg" id="err-5">Please write something before continuing.</div>
+    </div>
+    <div class="step" id="step-6">
+      <div class="q-label">Context</div>
+      <div class="question">Has anything changed recently?</div>
+      <div class="hint">Sleep, diet, stress, new program, injury — anything that might be relevant.</div>
+      <textarea id="ans-6" rows="2" placeholder='e.g. "Sleep has been rough lately" or "Nothing I can think of"'></textarea>
+      <button class="btn-next" onclick="next(6)">Next <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+      <div class="error-msg" id="err-6">Please write something before continuing.</div>
+    </div>
+    <div class="step" id="step-7">
+      <div class="q-label">Goal</div>
+      <div class="question">What's your main goal right now?</div>
+      <div class="hint">Strength, size, or both — and anything else worth mentioning.</div>
+      <textarea id="ans-7" rows="3" placeholder='e.g. "Mainly strength, want to hit a 100kg bench"'></textarea>
+      <button class="btn-next" onclick="diagnose()">Get my diagnosis <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+      <div class="error-msg" id="err-7">Please write something before continuing.</div>
+    </div>
+  </div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingText">Analysing your plateau...</div>
+  </div>
+
+  <div class="result" id="result">
+    <div class="result-header">
+      <div class="result-badge">✓ Diagnosis ready</div>
+      <div class="result-title">Here's what's going on</div>
+    </div>
+    <div class="result-card">
+      <div class="card-label">Why you're stuck</div>
+      <div class="card-body" id="res-why"></div>
+    </div>
+    <div class="result-card">
+      <div class="card-label">Your plan — next 3–4 weeks</div>
+      <div class="card-body" id="res-protocol"></div>
+    </div>
+    <div class="result-card">
+      <div class="card-label">Watch out for</div>
+      <div class="card-body" id="res-watch"></div>
+    </div>
+    <button class="btn-restart" onclick="restart()">← Start over with a different lift</button>
+    <div class="chat-wrap" id="chatWrap">
+      <div class="chat-header">Any questions about your diagnosis?</div>
+      <div class="chat-messages" id="chatMessages"></div>
+      <div class="chat-input-row">
+        <textarea id="chatInput" rows="1" placeholder="Ask anything about your plan..."></textarea>
+        <button class="chat-send" onclick="sendChat()" id="chatSendBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentStep = 0;
+  const totalSteps = 8;
+  let apiKey = localStorage.getItem('pb_api_key') || '';
+  let chatHistory = [];
+  let diagnosisSummary = '';
+  let currentAnswers = {};
+
+  if (apiKey) document.getElementById('apiNotice').style.display = 'none';
+
+  function saveKey() {
+    const val = document.getElementById('apiKeyInput').value.trim();
+    if (!val) return;
+    apiKey = val;
+    localStorage.setItem('pb_api_key', val);
+    document.getElementById('apiNotice').style.display = 'none';
+  }
+
+  function updateProgress(step) {
+    const pct = Math.round(((step + 1) / totalSteps) * 100);
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('stepLabel').textContent = 'Step ' + (step + 1) + ' of ' + totalSteps;
+    document.getElementById('stepPct').textContent = pct + '%';
+  }
+
+  function next(stepIndex) {
+    const val = document.getElementById('ans-' + stepIndex).value.trim();
+    if (!val) { document.getElementById('err-' + stepIndex).style.display = 'block'; return; }
+    document.getElementById('err-' + stepIndex).style.display = 'none';
+    document.getElementById('step-' + stepIndex).classList.remove('active');
+    currentStep = stepIndex + 1;
+    document.getElementById('step-' + currentStep).classList.add('active');
+    updateProgress(currentStep);
+    document.getElementById('ans-' + currentStep).focus();
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      const activeStep = document.querySelector('.step.active');
+      if (!activeStep) return;
+      const stepIndex = parseInt(activeStep.id.replace('step-', ''));
+      e.preventDefault();
+      if (stepIndex < 7) { next(stepIndex); } else { diagnose(); }
+    }
+  });
+
+  const loadingMessages = ['Analysing your plateau...', 'Searching the research...', 'Building your plan...', 'Almost there...'];
+
+  async function diagnose() {
+    const val = document.getElementById('ans-7').value.trim();
+    if (!val) { document.getElementById('err-7').style.display = 'block'; return; }
+    if (!apiKey) { alert('Please enter your Anthropic API key at the top of the page first.'); return; }
+
+    currentAnswers = {
+      exercise: document.getElementById('ans-0').value.trim(),
+      experience: document.getElementById('ans-1').value.trim(),
+      weightReps: document.getElementById('ans-2').value.trim(),
+      duration: document.getElementById('ans-3').value.trim(),
+      failurePoint: document.getElementById('ans-4').value.trim(),
+      frequency: document.getElementById('ans-5').value.trim(),
+      context: document.getElementById('ans-6').value.trim(),
+      goal: document.getElementById('ans-7').value.trim()
+    };
+
+    document.getElementById('stepsWrap').style.display = 'none';
+    document.getElementById('progressWrap').style.display = 'none';
+    document.getElementById('loading').classList.add('active');
+
+    let msgIndex = 0;
+    const msgInterval = setInterval(() => {
+      msgIndex = (msgIndex + 1) % loadingMessages.length;
+      document.getElementById('loadingText').textContent = loadingMessages[msgIndex];
+    }, 2200);
+
+    try {
+      const response = await fetch('/diagnose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...currentAnswers, apiKey })
+      });
+
+      clearInterval(msgInterval);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Something went wrong');
+
+      document.getElementById('res-why').textContent = data.why;
+      document.getElementById('res-protocol').textContent = data.protocol;
+      document.getElementById('res-watch').textContent = data.watch;
+
+      diagnosisSummary = `Exercise: ${currentAnswers.exercise}\nExperience: ${currentAnswers.experience}\nWeight/reps: ${currentAnswers.weightReps}\nStuck for: ${currentAnswers.duration}\nFailure point: ${currentAnswers.failurePoint}\nFrequency: ${currentAnswers.frequency}\nContext: ${currentAnswers.context}\nGoal: ${currentAnswers.goal}\n\nDiagnosis:\nWhy: ${data.why}\nProtocol: ${data.protocol}\nWatch: ${data.watch}`;
+      chatHistory = [];
+      document.getElementById('chatMessages').innerHTML = '';
+      document.getElementById('loading').classList.remove('active');
+      document.getElementById('result').classList.add('active');
+
+    } catch (err) {
+      clearInterval(msgInterval);
+      document.getElementById('loading').classList.remove('active');
+      document.getElementById('stepsWrap').style.display = 'block';
+      document.getElementById('progressWrap').style.display = 'block';
+      document.getElementById('step-7').classList.add('active');
+      document.getElementById('err-7').textContent = 'Error: ' + err.message;
+      document.getElementById('err-7').style.display = 'block';
+    }
+  }
+
+  async function sendChat() {
+    const input = document.getElementById('chatInput');
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    const messagesEl = document.getElementById('chatMessages');
+    const sendBtn = document.getElementById('chatSendBtn');
+
+    const userBubble = document.createElement('div');
+    userBubble.className = 'chat-bubble user';
+    userBubble.textContent = msg;
+    messagesEl.appendChild(userBubble);
+    input.value = '';
+    sendBtn.disabled = true;
+
+    const typingBubble = document.createElement('div');
+    typingBubble.className = 'chat-bubble coach typing';
+    typingBubble.textContent = 'Thinking...';
+    messagesEl.appendChild(typingBubble);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+
+    chatHistory.push({ role: 'user', content: msg });
+
+    try {
+      const response = await fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg, history: chatHistory, diagnosisSummary, apiKey })
+      });
+
+      const data = await response.json();
+      const reply = data.reply;
+      chatHistory.push({ role: 'assistant', content: reply });
+      typingBubble.className = 'chat-bubble coach';
+      typingBubble.textContent = reply;
+
+    } catch (err) {
+      typingBubble.className = 'chat-bubble coach';
+      typingBubble.textContent = 'Something went wrong — try again.';
+    }
+
+    sendBtn.disabled = false;
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  document.getElementById('chatInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+  });
+
+  function restart() {
+    currentStep = 0;
+    document.querySelectorAll('.step').forEach((s, i) => s.classList.toggle('active', i === 0));
+    document.querySelectorAll('textarea').forEach(t => t.value = '');
+    document.querySelectorAll('.error-msg').forEach(e => e.style.display = 'none');
+    document.getElementById('result').classList.remove('active');
+    document.getElementById('stepsWrap').style.display = 'block';
+    document.getElementById('progressWrap').style.display = 'block';
+    document.getElementById('chatMessages').innerHTML = '';
+    chatHistory = [];
+    updateProgress(0);
+  }
+</script>
+</body>
+</html>
