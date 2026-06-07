@@ -355,6 +355,16 @@
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
   });
 
+  document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    const activeStep = document.querySelector('.step.active');
+    if (!activeStep) return;
+    const stepIndex = parseInt(activeStep.id.replace('step-', ''));
+    e.preventDefault();
+    if (stepIndex < 7) { next(stepIndex); } else { diagnose(); }
+  }
+});
+
   function restart() {
     currentStep = 0;
     document.querySelectorAll('.step').forEach((s, i) => s.classList.toggle('active', i === 0));
