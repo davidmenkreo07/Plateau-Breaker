@@ -9,6 +9,7 @@ import anthropic
 import warnings
 import json
 import re
+import os
 warnings.filterwarnings("ignore")
 
 app = FastAPI()
