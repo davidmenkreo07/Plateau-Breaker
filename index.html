@@ -45,6 +45,9 @@
   .result-header { margin-bottom: 1.75rem; }
   .result-badge { display: inline-flex; align-items: center; gap: 6px; background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(200,241,53,0.2); font-size: 11px; font-family: 'DM Mono', monospace; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 12px; border-radius: 99px; margin-bottom: 1rem; }
   .result-title { font-family: 'Bebas Neue', sans-serif; font-size: 38px; letter-spacing: 0.02em; line-height: 1.1; color: var(--text); }
+  .research-line { font-size: 11px; color: var(--muted); margin-top: 4px; font-weight: 300; letter-spacing: 0.03em; opacity: 0.7; }
+  .research-line::before { content: '— '; }
+  .research-footer { font-size: 11px; color: var(--muted); margin-top: 1.25rem; font-weight: 300; line-height: 1.6; padding-top: 1rem; border-top: 1px solid var(--border); opacity: 0.75; }
   .result-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; margin-bottom: 1rem; }
   .card-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 8px; }
   .card-label::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
@@ -80,6 +83,7 @@
   <div class="header">
     <div class="wordmark">Plateau<span>.</span>Breaker</div>
     <div class="tagline">Diagnose your stuck lift — no login, no fluff, just answers.</div>
+    <div class="research-line">Informed by peer-reviewed sports science research</div>
   </div>
 
   <div class="api-notice" id="apiNotice">
@@ -111,7 +115,7 @@
     </div>
     <div class="step" id="step-1">
       <div class="q-label">Experience</div>
-      <div class="question">How long have you been lifting in general?</div>
+      <div class="question">How long have you been lifting for?</div>
       <div class="hint">Total time training with weights — not just this exercise.</div>
       <textarea id="ans-1" rows="2" placeholder='e.g. "About 2 years" or "6 months, fairly new to it"'></textarea>
       <button class="btn-next" onclick="next(1)">Next <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
@@ -189,6 +193,7 @@
       <div class="card-label">Watch out for</div>
       <div class="card-body" id="res-watch"></div>
     </div>
+    <div class="research-footer">This diagnosis draws on peer-reviewed studies in strength training, progressive overload, and exercise science. It's a starting point — not a substitute for a qualified coach.</div>
     <button class="btn-restart" onclick="restart()">← Start over with a different lift</button>
     <div class="chat-wrap" id="chatWrap">
       <div class="chat-header">Any questions about your diagnosis?</div>
