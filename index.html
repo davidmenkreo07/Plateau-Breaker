@@ -357,6 +357,7 @@
 
   document.addEventListener('keydown', function(e) {
   if (e.key === 'Enter' && !e.shiftKey) {
+    if (document.activeElement === document.getElementById('chatInput')) return;
     const activeStep = document.querySelector('.step.active');
     if (!activeStep) return;
     const stepIndex = parseInt(activeStep.id.replace('step-', ''));
