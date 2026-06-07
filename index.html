@@ -86,14 +86,6 @@
     <div class="research-line">Informed by peer-reviewed sports science research</div>
   </div>
 
-  <div class="api-notice" id="apiNotice">
-    <strong>Your Anthropic API key</strong> — saved in your browser only, never sent anywhere else.
-    <div class="api-key-row">
-      <input type="password" id="apiKeyInput" placeholder="sk-ant-..." />
-      <button onclick="saveKey()">Save</button>
-    </div>
-  </div>
-
   <div class="progress-wrap" id="progressWrap">
     <div class="progress-meta">
       <span id="stepLabel">Step 1 of 8</span>
@@ -286,7 +278,7 @@
       const response = await fetch('https://plateau-breaker-production.up.railway.app/diagnose', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...currentAnswers, apiKey })
+        body: JSON.stringify({ ...currentAnswers })
       });
 
       clearInterval(msgInterval);
@@ -341,7 +333,7 @@
       const response = await fetch('https://plateau-breaker-production.up.railway.app/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: msg, history: chatHistory, diagnosisSummary, apiKey })
+        body: JSON.stringify({ message: msg, history: chatHistory, diagnosisSummary })
       });
 
       const data = await response.json();

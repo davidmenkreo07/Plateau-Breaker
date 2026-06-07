@@ -35,13 +35,11 @@ class DiagnoseRequest(BaseModel):
     frequency: str
     context: str
     goal: str
-    apiKey: str
 
 class ChatRequest(BaseModel):
     message: str
     history: list
     diagnosisSummary: str
-    apiKey: str
 
 @app.get("/")
 async def serve_index():
@@ -82,7 +80,7 @@ Frequency: {req.frequency}
 Context: {req.context}
 Goal: {req.goal}"""
 
-    client = anthropic.Anthropic(api_key=req.apiKey)
+    client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
     message = client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=1200,
@@ -102,7 +100,7 @@ async def chat(req: ChatRequest):
 Original diagnosis context:
 {req.diagnosisSummary}"""
 
-    client = anthropic.Anthropic(api_key=req.apiKey)
+    client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
     message = client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=300,
@@ -111,3 +109,6 @@ Original diagnosis context:
     )
 
     return {"reply": message.content[0].text.strip()}
+
+
+
