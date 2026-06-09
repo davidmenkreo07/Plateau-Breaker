@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Form Analyzer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d0d0d;
+      --surface: #161616;
+      --border: #2a2a2a;
+      --accent: #c8f135;
+      --accent-dim: rgba(200,241,53,0.12);
+      --text: #f0ede6;
+      --muted: #6b6b6b;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* HEADER */
+    .header { margin-bottom: 2.5rem; animation: fadeUp 0.6s ease both; }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      text-decoration: none;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 1.25rem;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: var(--accent); }
+
+    .wordmark {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 52px;
+      letter-spacing: 0.02em;
+      color: var(--text);
+      line-height: 1;
+    }
+    .wordmark span { color: var(--accent); }
+
+    .tagline {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 6px;
+      font-weight: 300;
+      letter-spacing: 0.04em;
+    }
+
+    /* MAIN LAYOUT */
+    .main-layout {
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    @media (max-width: 720px) {
+      .main-layout { grid-template-columns: 1fr; }
+    }
+
+    /* VIDEO SECTION */
+    .video-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+      animation: fadeUp 0.6s 0.1s ease both;
+    }
+
+    .video-inner {
+      position: relative;
+      display: block;
+      width: 100%;
+      aspect-ratio: 4/3;
+      background: #000;
+    }
+
+    .video-inner video {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: contain;
+    }
+
+    .video-inner canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .video-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 300;
+      pointer-events: none;
+    }
+
+    .video-placeholder svg {
+      opacity: 0.3;
+    }
+
+    .upload-bar {
+      padding: 0.875rem 1.25rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .upload-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--accent);
+      color: #0d0d0d;
+      border: none;
+      border-radius: 6px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 9px 18px;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.15s;
+      letter-spacing: 0.02em;
+      flex-shrink: 0;
+    }
+    .upload-label:hover { opacity: 0.88; transform: translateY(-1px); }
+
+    #videoInput { display: none; }
+
+    .file-name {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      animation: fadeUp 0.6s 0.15s ease both;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem;
+    }
+
+    .card-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-label::before {
+      content: '';
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .angle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .angle-row:last-child { border-bottom: none; padding-bottom: 0; }
+
+    .angle-name {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 300;
+    }
+
+    .angle-value {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 28px;
+      color: var(--accent);
+      letter-spacing: 0.02em;
+      line-height: 1;
+    }
+
+    .angle-value.inactive { color: var(--border); }
+
+    .frame-count {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .frame-count span { color: var(--text); }
+
+    .btn-analyze {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: var(--accent);
+      color: #0d0d0d;
+      border: none;
+      border-radius: 6px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 13px 22px;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.15s;
+      letter-spacing: 0.02em;
+    }
+    .btn-analyze:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn-analyze:active { transform: scale(0.97); }
+    .btn-analyze:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    /* RESULT */
+    .result {
+      margin-top: 1.5rem;
+      display: none;
+      animation: fadeUp 0.5s ease both;
+      grid-column: 1 / -1;
+    }
+    .result.active { display: block; }
+
+    .result-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent-dim);
+      color: var(--accent);
+      border: 1px solid rgba(200,241,53,0.2);
+      font-size: 11px;
+      font-family: 'DM Mono', monospace;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 5px 12px;
+      border-radius: 99px;
+      margin-bottom: 1rem;
+    }
+
+    .result-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 38px;
+      letter-spacing: 0.02em;
+      line-height: 1.1;
+      color: var(--text);
+      margin-bottom: 1.25rem;
+    }
+
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+      font-size: 15px;
+      font-weight: 300;
+      line-height: 1.75;
+      color: var(--text);
+    }
+
+    .result-card h2, .result-card h3 {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+      letter-spacing: 0.02em;
+    }
+
+    .result-meta {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .btn-restart {
+      margin-top: 1rem;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      padding: 9px 18px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-restart:hover { border-color: var(--muted); color: var(--text); }
+
+    /* LOADING */
+    .loading { display: none; text-align: center; padding: 2rem 0; }
+    .loading.active { display: block; }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    .loading-text {
+      font-size: 12px;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      letter-spacing: 0.06em;
+    }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <a href="plateau-breaker.html" class="back-link">← Back to Plateau Breaker</a>
+    <div class="wordmark">Form<span>.</span>Analyzer</div>
+    <div class="tagline">Upload your lift, get a data-driven form diagnosis.</div>
+  </div>
+
+  <div class="main-layout">
+
+    <!-- VIDEO -->
+    <div class="video-wrap">
+      <div class="video-inner" id="videoInner">
+        <video id="video" controls playsinline></video>
+        <canvas id="canvas"></canvas>
+        <div class="video-placeholder" id="placeholder">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M15 10l4.553-2.069A1 1 0 0121 8.82v6.36a1 1 0 01-1.447.889L15 14M3 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/>
+          </svg>
+          <span>No video loaded</span>
+        </div>
+      </div>
+      <div class="upload-bar">
+        <label class="upload-label" for="videoInput">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+          Choose video
+        </label>
+        <input type="file" id="videoInput" accept="video/*">
+        <span class="file-name" id="fileName">No file chosen</span>
+      </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+
+      <div class="card">
+        <div class="card-label">Live angles</div>
+        <div class="angle-row">
+          <span class="angle-name">Left knee</span>
+          <span class="angle-value inactive" id="leftKnee">--</span>
+        </div>
+        <div class="angle-row">
+          <span class="angle-name">Right knee</span>
+          <span class="angle-value inactive" id="rightKnee">--</span>
+        </div>
+        <div class="angle-row">
+          <span class="angle-name">Hip</span>
+          <span class="angle-value inactive" id="hipAngle">--</span>
+        </div>
+        <div class="frame-count">Frames recorded: <span id="frameCount">0</span></div>
+      </div>
+
+      <button class="btn-analyze" id="analyzeBtn" onclick="analyze()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        Analyze my form
+      </button>
+
+    </div>
+
+    <!-- LOADING -->
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <div class="loading-text" id="loadingText">Analyzing your lift...</div>
+    </div>
+
+    <!-- RESULT -->
+    <div class="result" id="result">
+      <div class="result-badge">✓ Analysis ready</div>
+      <div class="result-title">Here's what's going on</div>
+      <div class="result-card" id="feedbackBody"></div>
+      <div class="result-meta" id="resultMeta"></div>
+      <button class="btn-restart" onclick="restart()">← Analyze a different video</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const video  = document.getElementById('video')
+  const canvas = document.getElementById('canvas')
+  const ctx    = canvas.getContext('2d')
+  const angleHistory = []
+
+  // Match canvas size to video on load
+  video.addEventListener('loadedmetadata', () => {
+    canvas.width  = video.videoWidth
+    canvas.height = video.videoHeight
+  })
+
+  document.getElementById('videoInput').addEventListener('change', (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    document.getElementById('fileName').textContent = file.name
+    document.getElementById('placeholder').style.display = 'none'
+    video.src = URL.createObjectURL(file)
+    angleHistory.length = 0
+    document.getElementById('frameCount').textContent = '0'
+    setTimeout(() => video.play(), 1500)
+  })
+
+  function calculateAngle(pointA, pointB, pointC) {
+    const vectorBA = { x: pointA.x - pointB.x, y: pointA.y - pointB.y }
+    const vectorBC = { x: pointC.x - pointB.x, y: pointC.y - pointB.y }
+    const dot      = vectorBA.x * vectorBC.x + vectorBA.y * vectorBC.y
+    const magBA    = Math.sqrt(vectorBA.x ** 2 + vectorBA.y ** 2)
+    const magBC    = Math.sqrt(vectorBC.x ** 2 + vectorBC.y ** 2)
+    const angleRad = Math.acos(dot / (magBA * magBC))
+    return Math.round(angleRad * (180 / Math.PI))
+  }
+
+  function onResults(results) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    if (!results.poseLandmarks) return
+
+    const lm = results.poseLandmarks
+
+    function px(landmark) {
+      return { x: landmark.x * canvas.width, y: landmark.y * canvas.height }
+    }
+
+    const keyJoints = [11, 12, 23, 24, 25, 26, 27, 28]
+    keyJoints.forEach(index => {
+      const point = px(lm[index])
+      ctx.beginPath()
+      ctx.arc(point.x, point.y, 6, 0, 2 * Math.PI)
+      ctx.fillStyle = lm[index].visibility > 0.4 ? '#c8f135' : 'rgba(200,241,53,0.3)'
+      ctx.fill()
+    })
+
+    const connections = [
+      [11, 12], [11, 23], [12, 24], [23, 24],
+      [23, 25], [24, 26], [25, 27], [26, 28],
+    ]
+    connections.forEach(([a, b]) => {
+      const pA = px(lm[a]), pB = px(lm[b])
+      ctx.beginPath()
+      ctx.moveTo(pA.x, pA.y)
+      ctx.lineTo(pB.x, pB.y)
+      ctx.strokeStyle = 'rgba(200,241,53,0.7)'
+      ctx.lineWidth = 2
+      ctx.stroke()
+    })
+
+    const minVisibility = 0.4
+    if ([23,24,25,26,27,28].every(i => lm[i].visibility > minVisibility)) {
+      const leftKnee  = calculateAngle(lm[23], lm[25], lm[27])
+      const rightKnee = calculateAngle(lm[24], lm[26], lm[28])
+      const hip       = calculateAngle(lm[11], lm[23], lm[25])
+
+      angleHistory.push({ t: Math.round(video.currentTime * 10) / 10, leftKnee, rightKnee, hip })
+
+      // Smooth: average last 5 frames to reduce flicker
+      const last = angleHistory.slice(-5)
+      const smoothKneeL = Math.round(last.reduce((s,f) => s + f.leftKnee, 0) / last.length)
+      const smoothKneeR = Math.round(last.reduce((s,f) => s + f.rightKnee, 0) / last.length)
+      const smoothHip   = Math.round(last.reduce((s,f) => s + f.hip, 0) / last.length)
+
+      const lk = document.getElementById('leftKnee')
+      const rk = document.getElementById('rightKnee')
+      const ha = document.getElementById('hipAngle')
+      lk.textContent = smoothKneeL; lk.classList.remove('inactive')
+      rk.textContent = smoothKneeR; rk.classList.remove('inactive')
+      ha.textContent = smoothHip;   ha.classList.remove('inactive')
+      document.getElementById('frameCount').textContent = angleHistory.length
+    }
+    // When confidence is low, hold the last good value — no reset to '--'
+  }
+
+  const loadingMessages = [
+    'Analyzing your lift...',
+    'Reading the angles...',
+    'Building your diagnosis...',
+    'Almost there...'
+  ]
+
+  async function analyze() {
+    if (angleHistory.length === 0) {
+      alert('No data recorded yet — play the video first.')
+      return
+    }
+
+    document.getElementById('result').classList.remove('active')
+    document.getElementById('loading').classList.add('active')
+    document.getElementById('analyzeBtn').disabled = true
+
+    let msgIndex = 0
+    const msgInterval = setInterval(() => {
+      msgIndex = (msgIndex + 1) % loadingMessages.length
+      document.getElementById('loadingText').textContent = loadingMessages[msgIndex]
+    }, 2000)
+
+    try {
+      const response = await fetch('https://form-analyzer-backend-production.up.railway.app/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ frameData: angleHistory, exercise: 'deadlift' })
+      })
+
+      const data = await response.json()
+      clearInterval(msgInterval)
+
+      if (data.error) {
+        alert('Error: ' + data.error)
+        document.getElementById('loading').classList.remove('active')
+        document.getElementById('analyzeBtn').disabled = false
+        return
+      }
+
+      document.getElementById('feedbackBody').innerHTML = data.feedback
+        .replace(/### (.*)/g, '<h3>$1</h3>')
+        .replace(/## (.*)/g, '<h2>$1</h2>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\n\n/g, '<br><br>')
+
+      document.getElementById('resultMeta').textContent =
+        `Session ID: ${data.session_id}  ·  Frames analyzed: ${data.summary.frames}  ·  Min knee: ${data.summary.min_knee}°  ·  Min hip: ${data.summary.min_hip}°`
+
+      document.getElementById('loading').classList.remove('active')
+      document.getElementById('result').classList.add('active')
+
+    } catch (err) {
+      clearInterval(msgInterval)
+      alert('Error: ' + err.message)
+      document.getElementById('loading').classList.remove('active')
+    }
+
+    document.getElementById('analyzeBtn').disabled = false
+  }
+
+  function restart() {
+    document.getElementById('result').classList.remove('active')
+    angleHistory.length = 0
+    document.getElementById('frameCount').textContent = '0'
+    document.getElementById('fileName').textContent = 'No file chosen'
+    document.getElementById('placeholder').style.display = 'flex'
+    video.src = ''
+    document.getElementById('videoInput').value = ''
+    ;['leftKnee','rightKnee','hipAngle'].forEach(id => {
+      const el = document.getElementById(id)
+      el.textContent = '--'
+      el.classList.add('inactive')
+    })
+  }
+
+  const pose = new Pose({
+    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+  })
+  pose.setOptions({
+    modelComplexity: 1,
+    smoothLandmarks: true,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5
+  })
+  pose.onResults(onResults)
+
+  video.addEventListener('play', () => {
+    async function processFrame() {
+      if (video.paused || video.ended) return
+      await pose.send({ image: video })
+      requestAnimationFrame(processFrame)
+    }
+    processFrame()
+  })
+</script>
+</body>
+</html>
