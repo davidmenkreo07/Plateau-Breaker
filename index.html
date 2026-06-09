@@ -445,6 +445,7 @@
 
     const answers = {
       exercise:     document.getElementById('ans-0').value.trim(),
+      experience:   'Not specified',
       weightReps:   document.getElementById('ans-1').value.trim(),
       duration:     document.getElementById('ans-2').value.trim(),
       failurePoint: document.getElementById('ans-3').value.trim(),
@@ -464,7 +465,7 @@
     }, 2200);
 
     try {
-      const response = await fetch('/.netlify/functions/diagnose', {
+      const response = await fetch('https://plateau-breaker-production.up.railway.app/diagnose', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(answers)
