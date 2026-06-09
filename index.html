@@ -407,6 +407,16 @@
 
 <script>
   let currentStep = 0;
+
+  document.addEventListener("keydown", function(e) {
+    if (e.key === "Enter" && !e.shiftKey && document.activeElement.tagName === "TEXTAREA") {
+      e.preventDefault();
+      const activeStep = document.querySelector(".step.active");
+      if (!activeStep) return;
+      const stepIndex = parseInt(activeStep.id.replace("step-", ""));
+      if (stepIndex < 6) { next(stepIndex); } else { diagnose(); }
+    }
+  });
   const totalSteps = 7;
 
   const loadingMessages = [
